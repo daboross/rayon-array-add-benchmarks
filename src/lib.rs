@@ -2,13 +2,14 @@ use std::ops::AddAssign;
 
 use rayon::prelude::*;
 
-/// Play around with different CHUNK_SIZEs as needed to find the best one.
-const CHUNK_SIZE: usize = 1024;
-
-pub fn par_add_all_join<T: Send + Sync + AddAssign + Copy>(target: &mut [T], src: &[T]) {
+pub fn par_add_all_join<T: Send + Sync + AddAssign + Copy>(
+    target: &mut [T],
+    src: &[T],
+    chunk_size: usize,
+) {
     assert_eq!(target.len(), src.len());
 
-    if target.len() < CHUNK_SIZE {
+    if target.len() < chunk_size {
         for (a, b) in target.iter_mut().zip(src.iter()) {
             *a += *b;
         }
@@ -17,8 +18,8 @@ pub fn par_add_all_join<T: Send + Sync + AddAssign + Copy>(target: &mut [T], src
         let (left_target, right_target) = target.split_at_mut(midpoint);
         let (left_src, right_src) = src.split_at(midpoint);
         rayon::join(
-            || par_add_all_join(left_target, left_src),
-            || par_add_all_join(right_target, right_src),
+            || par_add_all_join(left_target, left_src, chunk_size),
+            || par_add_all_join(right_target, right_src, chunk_size),
         );
     }
 }
@@ -46,7 +47,7 @@ fn test_par_add_all_join() {
     let mut v2 = vec![2; 1024 * 10];
     let v3: &[u32] = &[3; 1024 * 10];
 
-    par_add_all_join(&mut v2, v1);
+    par_add_all_join(&mut v2, v1, 1024);
 
     assert_eq!(v2, v3);
 }
